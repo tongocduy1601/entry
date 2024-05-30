@@ -1,0 +1,6 @@
+# .env
+# git ignore .env, node_module
+
+.env
+node_modules/
+log/
