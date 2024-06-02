@@ -1,16 +1,15 @@
 const httpStatus = require("http-status");
-const userService = require("../services/user.service");
-const tokenService = require("../services/token.service.js");
+const { UserService } = require("../modules/user");
+const { tokenService } = require("../modules/authen");
 
 module.exports = (requiredRoles) => (req, res, next) => {
   return new Promise(async (resolve, reject) => {
     try {
+      const userService = UserService;
       const token = tokenService.getAccessToken(req);
-
       const decoded = tokenService.getPayloadFromToken(token);
       if (!!requiredRoles) {
         const user = await userService.getUserByLoginId(decoded.loginId);
-
         if (!user) {
           reject();
         }
@@ -27,6 +26,13 @@ module.exports = (requiredRoles) => (req, res, next) => {
   })
     .then(() => next())
     .catch(async (err) => {
-      return res.status(httpStatus.UNAUTHORIZED);
+      if (err.name === "TokenExpiredError") {
+        return res
+          .status(httpStatus.UNAUTHORIZED)
+          .send("Access Denied: Token expired");
+      }
+      return res
+        .status(httpStatus.UNAUTHORIZED)
+        .send(`Access Denied :${err.name}`);
     });
 };

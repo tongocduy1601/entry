@@ -1,5 +1,3 @@
-const { NOT_FOUND } = require("http-status");
-
 const ROLE = {
   USER: "user",
   ADMIN: "admin",

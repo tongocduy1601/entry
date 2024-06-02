@@ -1,12 +1,12 @@
-const userModel = require("../models/user.model");
-const ApiError = require("../utils/apiError.js");
+const { ApiError, ROLE, USER_CONSTANT } = require("../../utils");
 const bcrypt = require("bcrypt");
-const { ROLE, USER_CONSTANT } = require("../utils/constants.js");
 const httpStatus = require("http-status");
 const saltRounds = 10;
-const tokenService = require("./token.service");
-class UserService {
-  static async createUser(loginId, password, email, firstName, lastName) {
+const { tokenService } = require("../../modules/authen");
+const userRepository = require("./user.repository");
+
+const UserService = {
+  async createUser(loginId, password, email, firstName, lastName) {
     try {
       const newUser = {
         loginId,
@@ -17,7 +17,7 @@ class UserService {
         updatedAt: new Date(),
         role: ROLE.USER,
       };
-      const loginIdExist = await userModel.getUserByLoginId(loginId);
+      const loginIdExist = await userRepository.getUserByLoginId(loginId);
       if (loginIdExist) {
         throw new ApiError(
           httpStatus.BAD_REQUEST,
@@ -25,19 +25,16 @@ class UserService {
         );
       }
       newUser.password = bcrypt.hashSync(password, saltRounds);
-      await userModel.create(newUser);
+      await userRepository.create(newUser);
       return true;
     } catch (error) {
-      throw new ApiError(
-        error.statusCode || httpStatus.INTERNAL_SERVER_ERROR,
-        error.message || USER_CONSTANT.FAILD_TO_CREATE
-      );
+      throw error;
     }
-  }
+  },
 
-  static async deleteUser(loginId) {
+  async deleteUser(loginId) {
     try {
-      const result = await userModel.delete(loginId);
+      const result = await userRepository.delete(loginId);
 
       return result;
     } catch (error) {
@@ -46,24 +43,20 @@ class UserService {
         USER_CONSTANT.FAILD_TO_DELETE
       );
     }
-  }
+  },
 
-  static async getAllUsers() {
+  async getAllUsers() {
     try {
-      const users = await userModel.getAllUsers();
+      const users = await userRepository.getAllUser();
       return users;
     } catch (error) {
-      throw new ApiError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        USER_CONSTANT.FAILT_TO_GET_ALL
-      );
+      throw error;
     }
-  }
+  },
 
-  static async getUserByLoginId(loginId) {
+  async getUserByLoginId(loginId) {
     try {
-      const user = await userModel.getUserByLoginId(loginId);
-
+      const user = await userRepository.getUserByLoginId(loginId);
       if (!user) {
         throw new ApiError(
           httpStatus.NOT_FOUND,
@@ -77,11 +70,11 @@ class UserService {
         USER_CONSTANT.FAILD_TO_GET_BY_ID
       );
     }
-  }
+  },
 
-  static async updateUser(loginId, email, firstName, lastName) {
+  async updateUser(loginId, email, firstName, lastName) {
     try {
-      let user = await userModel.getUserByLoginId(loginId);
+      let user = await userRepository.getUserByLoginId(loginId);
       if (!user) {
         throw new ApiError(
           httpStatus.NOT_FOUND,
@@ -92,8 +85,8 @@ class UserService {
       user.email = email ?? user.email;
       user.firstName = firstName ?? user.firstName;
       user.lastName = lastName ?? user.lastName;
-      await userModel.update(loginId, user);
-      user = await userModel.getUserByLoginId(loginId);
+      await userRepository.update(loginId, user);
+      user = await userRepository.getUserByLoginId(loginId);
       return user;
     } catch (error) {
       throw new ApiError(
@@ -101,17 +94,18 @@ class UserService {
         "Failed to update user"
       );
     }
-  }
+  },
 
-  static async login(loginId, password) {
+  async login(loginId, password) {
     try {
-      const user = await userModel.getUserByLoginId(loginId);
+      const user = await userRepository.getUserByLoginId(loginId);
       if (!user) {
         throw new ApiError(
           httpStatus.NOT_FOUND,
           USER_CONSTANT.FAILD_TO_GET_BY_ID
         );
       }
+
       const validPassword = bcrypt.compareSync(password, user.password);
       if (!validPassword) {
         throw new ApiError(httpStatus.UNAUTHORIZED);
@@ -126,7 +120,6 @@ class UserService {
     } catch (error) {
       throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Login failed");
     }
-  }
-}
-
+  },
+};
 module.exports = UserService;
